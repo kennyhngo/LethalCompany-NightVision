@@ -15,7 +15,7 @@ namespace NightVision
     {
         private const string PLUGIN_GUID = "Ken.NightVision";
         private const string PLUGIN_NAME = "Toggleable Night Vision";
-        private const string PLUGIN_VERSION = "1.0.0";
+        private const string PLUGIN_VERSION = "1.0.1";
 
         public static Harmony _harmony = new Harmony("NightVision");
         internal static ManualLogSource mls;
