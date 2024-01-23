@@ -13,7 +13,7 @@ namespace NightVision
     {
         public const string PLUGIN_GUID = "Ken.NightVision";
         public const string PLUGIN_NAME = "Toggleable Night Vision";
-        public const string PLUGIN_VERSION = "1.1.0";
+        public const string PLUGIN_VERSION = "1.1.1";
     }
 
     [BepInPlugin(PLUGIN_INFO.PLUGIN_GUID, PLUGIN_INFO.PLUGIN_NAME, PLUGIN_INFO.PLUGIN_VERSION)]
@@ -51,8 +51,8 @@ namespace NightVision
 
         private void OnInsertKeyPressed(InputAction.CallbackContext obj)
         {
-            PlayerControllerB player = StartOfRound.Instance.localPlayerController;
-            if (player == null) return;
+            PlayerControllerB player = StartOfRound.Instance?.localPlayerController;
+            if (player == null || player.inTerminalMenu || player.isTypingChat) return;
 
             toggled = !toggled;
             mls.LogInfo($"Night mode {(toggled ? "enabled" : "disabled")}");
