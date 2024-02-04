@@ -13,7 +13,7 @@ namespace NightVision
     {
         public const string PLUGIN_GUID = "Ken.NightVision";
         public const string PLUGIN_NAME = "Toggleable Night Vision";
-        public const string PLUGIN_VERSION = "1.1.1";
+        public const string PLUGIN_VERSION = "1.1.2";
     }
 
     [BepInPlugin(PLUGIN_INFO.PLUGIN_GUID, PLUGIN_INFO.PLUGIN_NAME, PLUGIN_INFO.PLUGIN_VERSION)]

@@ -14,3 +14,7 @@
 # 1.1.1
 
 - Now doesn't toggle when typing in chat or terminal
+
+# 1.1.2
+
+- Somehow the wrong version got published
