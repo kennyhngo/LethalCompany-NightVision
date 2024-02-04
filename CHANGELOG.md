@@ -18,3 +18,7 @@
 # 1.1.2
 
 - Somehow the wrong version got published
+
+# 1.1.3
+
+- Added configurable to set night vision on or off when game loads.

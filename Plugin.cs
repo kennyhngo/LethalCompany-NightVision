@@ -13,7 +13,7 @@ namespace NightVision
     {
         public const string PLUGIN_GUID = "Ken.NightVision";
         public const string PLUGIN_NAME = "Toggleable Night Vision";
-        public const string PLUGIN_VERSION = "1.1.2";
+        public const string PLUGIN_VERSION = "1.1.3";
     }
 
     [BepInPlugin(PLUGIN_INFO.PLUGIN_GUID, PLUGIN_INFO.PLUGIN_NAME, PLUGIN_INFO.PLUGIN_VERSION)]
@@ -21,9 +21,9 @@ namespace NightVision
     {
         public static Harmony _harmony = new Harmony(PLUGIN_INFO.PLUGIN_GUID);
         internal static ManualLogSource mls;
-        private static bool toggled = false;
 
         private static ConfigEntry<string> cfgKeyBind;
+        public static ConfigEntry<bool> toggled;
         public static ConfigEntry<float> intensity;
         public static ConfigEntry<bool> diversityFullDarkness;
         public static ConfigEntry<float> diversityFullDarknessIntensity;
@@ -35,6 +35,8 @@ namespace NightVision
 
             cfgKeyBind = Config.Bind("Toggle Button", "Key", "C",
                                      "Button to toggle night vision mode in the bunker.");
+            toggled = Config.Bind("Toggle Button", "Default behavior", false, "Whether night vision is on or off by default when you load up the game.");
+            
             intensity = Config.Bind("Numeric Values", "Intensity", 7500f,
                                     "Intensity of the night vision when toggled. [Originally was 100000]");
             diversityFullDarkness = Config.Bind("Mod Compatability", "Diversity - Full Darkness", false,
@@ -54,9 +56,9 @@ namespace NightVision
             PlayerControllerB player = StartOfRound.Instance?.localPlayerController;
             if (player == null || player.inTerminalMenu || player.isTypingChat) return;
 
-            toggled = !toggled;
-            mls.LogInfo($"Night mode {(toggled ? "enabled" : "disabled")}");
-            if (toggled)
+            toggled.Value = !toggled.Value;
+            mls.LogInfo($"Night mode {(toggled.Value ? "enabled" : "disabled")}");
+            if (toggled.Value)
             {
                 player.nightVision.intensity = intensity.Value;
                 player.nightVision.range = 100000f;
