@@ -14,7 +14,7 @@ namespace NightVision
     {
         public const string PLUGIN_GUID = "Ken.NightVision";
         public const string PLUGIN_NAME = "Toggleable Night Vision";
-        public const string PLUGIN_VERSION = "2.0.0";
+        public const string PLUGIN_VERSION = "2.1.0";
     }
 
     [BepInPlugin(PLUGIN_INFO.PLUGIN_GUID, PLUGIN_INFO.PLUGIN_NAME, PLUGIN_INFO.PLUGIN_VERSION)]
@@ -25,14 +25,17 @@ namespace NightVision
 
         // config entries
         private static ConfigEntry<string> cfgKeyBind;
+        public static ConfigEntry<bool> defaultToggle;
         
         // indoor settings
-        public static ConfigEntry<bool> defaultToggle;
         public static ConfigEntry<float> indoorIntensity;
-        
+        public static ConfigEntry<bool> disableSteamValve;
+
         // outdoor settings
         public static ConfigEntry<bool> toggleFog;
-        
+        public static ConfigEntry<bool> enableOutdoor;
+        public static ConfigEntry<float> outdoorIntensity;
+
         // mod compatability
         public static ConfigEntry<bool> diversityFullDarkness;
         public static ConfigEntry<float> diversityFullDarknessIntensity;
@@ -40,18 +43,16 @@ namespace NightVision
         private void Awake()
         {
             mls = BepInEx.Logging.Logger.CreateLogSource(PLUGIN_INFO.PLUGIN_GUID);
-            mls.LogInfo("NightVision loaded");
+            mls.LogInfo($"{PLUGIN_INFO.PLUGIN_NAME} loaded");
             ConfigureSettings();
+            SetDefaultToggle(defaultToggle.Value);
             
             var insertKeyAction = new InputAction(binding: $"<Keyboard>/{cfgKeyBind.Value}");
             insertKeyAction.performed += OnInsertKeyPressed;
             insertKeyAction.Enable();
 
-            SetDefaultToggle(defaultToggle.Value);
-            harmony.PatchAll(typeof(Plugin));
-            harmony.PatchAll(typeof(NightVisionPatch));
-            harmony.PatchAll(typeof(NightVisionOutdoors));
-            harmony.PatchAll(typeof(PlayerControllerBPatch));
+            System.Type[] patches = new System.Type[] { typeof(Plugin), typeof(NightVisionPatch), typeof(NightVisionOutdoors), typeof(PlayerControllerBPatch) };
+            foreach (System.Type patch in patches) harmony.PatchAll(patch);
         }
 
         private void ConfigureSettings()
@@ -62,11 +63,13 @@ namespace NightVision
             defaultToggle = Config.Bind("General", "Default Behavior", false, "Whether night vision is on or off by default when you load up the game.");
             
             // Indoors
-            indoorIntensity = Config.Bind("Indoor Settings", "Intensity", 7500f, "Intensity of the night vision when toggled. [Originally was 100000]");
+            indoorIntensity = Config.Bind("Indoor Settings", "Intensity", 7500f, "Intensity of the night vision when toggled inside. [Originally was 100000]");
+            disableSteamValve = Config.Bind("Indoor Settings", "Steam Valve", false, "Toggling fog also disables steam valve.");
 
             // Outdoors
             toggleFog = Config.Bind("Outdoor Settings", "Toggle Fog", false, "Disable fog when toggling night vision outside.");
-            // outdoorIntensity = Config.Bind("Outdoor Settings", "Intensity", 0f, "Intensity of night vision when toggled.");
+            enableOutdoor = Config.Bind("Outdoor Settings", "Enable Outside", true, "Enable night vision to work outside.");
+            outdoorIntensity = Config.Bind("Outdoor Settings", "Intensity", 10f, "Intensity of night vision when toggled outside.");
 
             // Diversity mod
             diversityFullDarkness = Config.Bind("Mod Compatability", "Diversity - Full Darkness", false, "Change default brightness when night vision is off.\nThis mod overrides the settings in Diversity config.");
@@ -105,7 +108,7 @@ namespace NightVision.Patches
         internal static int cachePasses = 0;
 
         [HarmonyPostfix]
-        private static void StartPrefix(PlayerControllerB __instance)
+        private static void UpdatePostfix(PlayerControllerB __instance)
         {
             if (!Plugin.toggleFog.Value) return;
             if (__instance == null) return;
@@ -115,7 +118,8 @@ namespace NightVision.Patches
                 cameras = null;
             }
             if (cameras == null) cameras = Resources.FindObjectsOfTypeAll(typeof(HDAdditionalCameraData));
-            
+
+            bool toggle = (__instance == null || !__instance.isInsideFactory || Plugin.disableSteamValve.Value) && toggled;
             foreach (Object cam in cameras)
             {
                 HDAdditionalCameraData camera = (HDAdditionalCameraData)(cam is HDAdditionalCameraData ? cam : null);
@@ -123,7 +127,7 @@ namespace NightVision.Patches
                 {
                     camera.customRenderingSettings = true;
                     camera.renderingPathCustomFrameSettingsOverrideMask.mask[28u] = true;
-                    camera.renderingPathCustomFrameSettings.SetEnabled((FrameSettingsField)28, !toggled);
+                    camera.renderingPathCustomFrameSettings.SetEnabled((FrameSettingsField)28, !toggle);
                 }
             }
         }
@@ -136,7 +140,7 @@ namespace NightVision.Patches
         internal static bool toggled;
 
         [HarmonyPrefix]
-        private static void Prefix(PlayerControllerB __instance)
+        private static void NightVisionPrefix(PlayerControllerB __instance)
         {
             if (toggled)
             {
@@ -171,13 +175,15 @@ namespace NightVision.Patches
 
 
         [HarmonyPostfix]
-        private static void Postfix(TimeOfDay __instance)
+        private static void InsideLightingPostfix(TimeOfDay __instance)
         {
+            if (!Plugin.enableOutdoor.Value) return;
             HDAdditionalLightData indirect = __instance.sunIndirect.GetComponent<HDAdditionalLightData>();
             if (toggled)
             {
-                indirect.lightDimmer = Mathf.Lerp(100f, 100_000f, sigmoid(__instance.globalTime, 950f, 0.1f));
-                indirect.intensity = Mathf.Lerp(2f, 10000f, sigmoid(__instance.globalTime, 950f, 0.1f));
+                float v = Plugin.outdoorIntensity.Value;
+                indirect.lightDimmer = Mathf.Lerp(10 * v, 10_000 * v, sigmoid(__instance.globalTime, 950f, 0.1f));
+                indirect.intensity = Mathf.Lerp(v, 1_000 * v, sigmoid(__instance.globalTime, 950f, 0.1f));
                 indirect.shadowDimmer = 0f;
                 indirect.useRayTracedShadows = true;
                 indirect.lightShadowRadius = 0f;
