@@ -1,3 +1,11 @@
+# 2.2.1
+
+- Fixed bug where fog would not be removed outside facility when another player is inside the facility in multiplayer
+
+# 2.2.0
+
+- Removed feature to choose whether to enable/disable fog inside and outside independently as it is quirky in multiplayer if at least once person is inside
+
 # 2.1.0
 
 - Added option to enable night vision outside

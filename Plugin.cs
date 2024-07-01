@@ -14,7 +14,7 @@ namespace NightVision
     {
         public const string PLUGIN_GUID = "Ken.NightVision";
         public const string PLUGIN_NAME = "Toggleable Night Vision";
-        public const string PLUGIN_VERSION = "2.1.0";
+        public const string PLUGIN_VERSION = "2.2.1";
     }
 
     [BepInPlugin(PLUGIN_INFO.PLUGIN_GUID, PLUGIN_INFO.PLUGIN_NAME, PLUGIN_INFO.PLUGIN_VERSION)]
@@ -102,9 +102,9 @@ namespace NightVision.Patches
     [HarmonyPatch(typeof(PlayerControllerB), "Update")]
     internal class PlayerControllerBPatch
     {
-        internal static Object[] cameras;
+        internal static Camera[] cameras = null;
         internal static bool toggled;
-        internal static int cacheRefreshLimit = 20;
+        internal static int cacheRefreshLimit = 24;
         internal static int cachePasses = 0;
 
         [HarmonyPostfix]
@@ -112,22 +112,21 @@ namespace NightVision.Patches
         {
             if (!Plugin.toggleFog.Value) return;
             if (__instance == null) return;
-            if (cachePasses++ >= cacheRefreshLimit)
+            if (cameras == null || cachePasses++ >= cacheRefreshLimit)
             {
                 cachePasses = 0;
-                cameras = null;
+                cameras = __instance.transform.GetComponentsInChildren<Camera>();
             }
-            if (cameras == null) cameras = Resources.FindObjectsOfTypeAll(typeof(HDAdditionalCameraData));
 
-            bool toggle = (__instance == null || !__instance.isInsideFactory || Plugin.disableSteamValve.Value) && toggled;
-            foreach (Object cam in cameras)
+            bool toggle = (!__instance.isInsideFactory || Plugin.disableSteamValve.Value) && toggled;
+            foreach (Camera camera in cameras)
             {
-                HDAdditionalCameraData camera = (HDAdditionalCameraData)(cam is HDAdditionalCameraData ? cam : null);
-                if (camera.gameObject.name != "MapCamera")
+                HDAdditionalCameraData cameraData = camera.GetComponent<HDAdditionalCameraData>();
+                if (cameraData != null && cameraData.gameObject.name != "MapCamera")
                 {
-                    camera.customRenderingSettings = true;
-                    camera.renderingPathCustomFrameSettingsOverrideMask.mask[28u] = true;
-                    camera.renderingPathCustomFrameSettings.SetEnabled((FrameSettingsField)28, !toggle);
+                    cameraData.customRenderingSettings = true;
+                    cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[28u] = true;
+                    cameraData.renderingPathCustomFrameSettings.SetEnabled((FrameSettingsField)28, !toggle);
                 }
             }
         }
@@ -170,6 +169,7 @@ namespace NightVision.Patches
 
         private static float sigmoid(float x, float midpoint, float steepness)
         {
+            Plugin.mls.LogInfo($"x: {x}, midpoint: {midpoint}, steepness: {steepness}");
             return 1 / (1 + Mathf.Exp(-steepness * (x - midpoint)));
         }
 
